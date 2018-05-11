@@ -9,102 +9,139 @@
 import SpriteKit
 import GameplayKit
 
-class GameScene: SKScene {
+let screenWidth = UIScreen.main.bounds.width
+let screenHeight = UIScreen.main.bounds.height
+
+
+//Explanation of SpriteKit framework (e.g., physics bodies and interactions)
+//GameScene.sks can be used if nodes are being placed manually
+//GameScene.swift controls activity in SKView in View Controller; scene code dictates what is seen in the SKView
+//Setting up nodes and physics bodies; node is visual representation; physics bodies govern how nodes move on the screen, contact each other, etc.  Once established, the relationship between nodes and their physics bodies are fixed until changed (e.g., if one spins, they both spin)
+//Nodes can be moved by changing the velocity physics bodies or with SKAction.move
+//SKActions can be chained, repeated forever, etc.  There are wide variety of SKActions.  SpriteKit handles
+//categoryBitMask = identifier for a node/physicsBody
+//collisionBitMask = determines which objects bounce off of each other
+//contactTestMask = determines which collisions result in didBegin being called; SKPhysicsContactDelegate must be set for didBegin to be called
+//collisionBitMask and contactTestMask are independent!
+
+
+
+
+
+class GameScene: SKScene, SKPhysicsContactDelegate {
     
-    var entities = [GKEntity]()
-    var graphs = [String : GKGraph]()
+    let BallCategory   : UInt32 = 0x1 << 0 //Unique identifier for ball node
+    let BoxCategory : UInt32 = 0x1 << 1 //Unique identifier box node
     
-    private var lastUpdateTime : TimeInterval = 0
-    private var label : SKLabelNode?
-    private var spinnyNode : SKShapeNode?
+    let initialPoint = CGPoint(x: screenWidth / 2, y: screenHeight * 3 / 4)
+    let boxPoint = CGPoint(x: screenWidth / 2, y: screenHeight / 4)
+    let shouldSpin = false
     
     override func sceneDidLoad() {
-
-        self.lastUpdateTime = 0
         
-        // Get label node from scene and store it for use later
-        self.label = self.childNode(withName: "//helloLabel") as? SKLabelNode
-        if let label = self.label {
-            label.alpha = 0.0
-            label.run(SKAction.fadeIn(withDuration: 2.0))
+        physicsWorld.gravity = CGVector(dx: 0, dy: 0)
+        physicsWorld.contactDelegate = self //Have to set this for didBegin to be called
+        
+        setNodes()
+        setMasks()
+        spinBox()
+    }
+    
+    func setNodes() {
+        let ballNode = SKShapeNode(circleOfRadius: 10)
+        ballNode.position = initialPoint
+        ballNode.fillColor = .white
+        ballNode.name = "ball"
+        ballNode.physicsBody = SKPhysicsBody(circleOfRadius: 10)
+        ballNode.physicsBody?.isDynamic = true
+        ballNode.physicsBody?.friction = 0
+        scene?.addChild(ballNode)
+        
+        let boxNode = SKShapeNode(rectOf: CGSize(width: 100, height: 40))
+        boxNode.position = CGPoint(x: screenWidth / 2, y: screenHeight / 4)
+        boxNode.fillColor = .green
+        boxNode.name = "box"
+        boxNode.lineWidth = 0
+        boxNode.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 100, height: 40))
+        boxNode.physicsBody?.isDynamic = false
+        boxNode.physicsBody?.friction = 0
+        scene?.addChild(boxNode)
+    }
+    
+    func launchBall() {
+        print("launch")
+        if let ball = childNode(withName: "ball") {
+            print("launch 1")
+            ball.physicsBody?.velocity = CGVector(dx: 0, dy: -300)
         }
-        
-        // Create shape node to use during mouse interaction
-        let w = (self.size.width + self.size.height) * 0.05
-        self.spinnyNode = SKShapeNode.init(rectOf: CGSize.init(width: w, height: w), cornerRadius: w * 0.3)
-        
-        if let spinnyNode = self.spinnyNode {
-            spinnyNode.lineWidth = 2.5
+    }
+    
+    func reset() {
+        if let ball = childNode(withName: "ball") {
+            ball.removeAllActions()
+            ball.physicsBody?.velocity = CGVector(dx: 0, dy: 0)
             
-            spinnyNode.run(SKAction.repeatForever(SKAction.rotate(byAngle: CGFloat(Double.pi), duration: 1)))
-            spinnyNode.run(SKAction.sequence([SKAction.wait(forDuration: 0.5),
-                                              SKAction.fadeOut(withDuration: 0.5),
-                                              SKAction.removeFromParent()]))
-        }
-    }
-    
-    
-    func touchDown(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.green
-            self.addChild(n)
-        }
-    }
-    
-    func touchMoved(toPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.blue
-            self.addChild(n)
-        }
-    }
-    
-    func touchUp(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.red
-            self.addChild(n)
-        }
-    }
-    
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let label = self.label {
-            label.run(SKAction.init(named: "Pulse")!, withKey: "fadeInOut")
+            let moveBall = SKAction.move(to: initialPoint, duration: 0)
+            ball.run(moveBall)
         }
         
-        for t in touches { self.touchDown(atPoint: t.location(in: self)) }
+        if let box = childNode(withName: "box") {
+            box.removeAllActions()
+            box.physicsBody?.velocity = CGVector(dx: 0, dy: 0)
+            
+            let moveBox = SKAction.move(to: boxPoint, duration: 0)
+            box.run(moveBox)
+            spinBox()
+        }
     }
     
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchMoved(toPoint: t.location(in: self)) }
+    func pause() {
+        scene?.isPaused = !isPaused
     }
     
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
+    func spinBox() {
+        if shouldSpin, let box = childNode(withName: "box") {
+            let spin = SKAction.rotate(byAngle: .pi, duration: 0.5)
+            let spinForever = SKAction.repeatForever(spin)
+            
+            let wait = SKAction.wait(forDuration: 1)
+            let spinThenWait = SKAction.sequence([spin, wait])
+            let spinThenWaitForever = SKAction.repeatForever(spinThenWait)
+            
+            box.run(spinForever)
+            //box.run(spinThenWaitForever)
+        }
     }
     
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
-    }
-    
-    
-    override func update(_ currentTime: TimeInterval) {
-        // Called before each frame is rendered
+    func setMasks() {
         
-        // Initialize _lastUpdateTime if it has not already been
-        if (self.lastUpdateTime == 0) {
-            self.lastUpdateTime = currentTime
+        if let ball = childNode(withName: "ball") {
+            ball.physicsBody?.categoryBitMask = BallCategory
+            ball.physicsBody?.collisionBitMask = BoxCategory //Make zero to pass through
+            ball.physicsBody?.contactTestBitMask = 0//BoxCategory //| BallCategory
         }
         
-        // Calculate time since last update
-        let dt = currentTime - self.lastUpdateTime
-        
-        // Update entities
-        for entity in self.entities {
-            entity.update(deltaTime: dt)
+        if let box = childNode(withName: "box") {
+            box.physicsBody?.categoryBitMask = BoxCategory
+            box.physicsBody?.collisionBitMask = BallCategory
+            box.physicsBody?.contactTestBitMask = 0//BallCategory
         }
-        
-        self.lastUpdateTime = currentTime
     }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        
+        //Function gets called if one contacting body has the other's categoryBitMask as its contactTestBitMask
+        
+        print("did begin")
+        
+        let firstBody = contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask ?
+            contact.bodyA:
+            contact.bodyB
+        
+        if firstBody.categoryBitMask == BallCategory, let box = childNode(withName: "box") {
+            let move = SKAction.move(to: CGPoint(x: screenWidth / 4, y: screenHeight / 4), duration: 2)
+            box.run(move)
+        }
+    }
+    
 }
