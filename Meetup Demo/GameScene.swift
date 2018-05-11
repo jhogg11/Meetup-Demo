@@ -26,8 +26,6 @@ let screenHeight = UIScreen.main.bounds.height
 
 
 
-
-
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
     let BallCategory   : UInt32 = 0x1 << 0 //Unique identifier for ball node
@@ -71,7 +69,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func launchBall() {
         print("launch")
         if let ball = childNode(withName: "ball") {
-            print("launch 1")
             ball.physicsBody?.velocity = CGVector(dx: 0, dy: -300)
         }
     }
