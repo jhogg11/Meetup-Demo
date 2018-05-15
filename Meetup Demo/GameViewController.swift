@@ -18,6 +18,7 @@ class GameViewController: UIViewController {
         super.viewDidLoad()
         
         setupScene()
+        
     }
 
     override var prefersStatusBarHidden: Bool {
@@ -32,6 +33,10 @@ class GameViewController: UIViewController {
         
         gameView.presentScene(scene)
         gameView.ignoresSiblingOrder = true
+    }
+    
+    func getRoot() -> UIViewController? {
+        return (UIApplication.shared.delegate as? AppDelegate)?.window?.rootViewController
     }
     
     @IBAction func pause(_ sender: Any) {

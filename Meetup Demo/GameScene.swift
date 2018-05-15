@@ -13,7 +13,7 @@ let screenWidth = UIScreen.main.bounds.width
 let screenHeight = UIScreen.main.bounds.height
 
 
-//Explanation of SpriteKit framework (e.g., physics bodies and interactions)
+//Explanation of SpriteKit framework (e.g., physics bodies and interactions, SKActions)
 //GameScene.sks can be used if nodes are being placed manually
 //GameScene.swift controls activity in SKView in View Controller; scene code dictates what is seen in the SKView
 //Setting up nodes and physics bodies; node is visual representation; physics bodies govern how nodes move on the screen, contact each other, etc.  Once established, the relationship between nodes and their physics bodies are fixed until changed (e.g., if one spins, they both spin)
@@ -28,12 +28,14 @@ let screenHeight = UIScreen.main.bounds.height
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
-    let BallCategory   : UInt32 = 0x1 << 0 //Unique identifier for ball node
+    let BallCategory : UInt32 = 0x1 << 0 //Unique identifier for ball node
     let BoxCategory : UInt32 = 0x1 << 1 //Unique identifier box node
     
     let initialPoint = CGPoint(x: screenWidth / 2, y: screenHeight * 3 / 4)
     let boxPoint = CGPoint(x: screenWidth / 2, y: screenHeight / 4)
+    
     let shouldSpin = false
+    let includeWait = false
     
     override func sceneDidLoad() {
         
@@ -87,7 +89,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             box.physicsBody?.velocity = CGVector(dx: 0, dy: 0)
             
             let moveBox = SKAction.move(to: boxPoint, duration: 0)
+            let resetRotate = SKAction.rotate(toAngle: 0, duration: 0)
             box.run(moveBox)
+            box.run(resetRotate)
             spinBox()
         }
     }
@@ -105,8 +109,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             let spinThenWait = SKAction.sequence([spin, wait])
             let spinThenWaitForever = SKAction.repeatForever(spinThenWait)
             
-            box.run(spinForever)
-            //box.run(spinThenWaitForever)
+            box.run(includeWait ? spinThenWaitForever: spinForever)
         }
     }
     
@@ -114,7 +117,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         if let ball = childNode(withName: "ball") {
             ball.physicsBody?.categoryBitMask = BallCategory
-            ball.physicsBody?.collisionBitMask = BoxCategory //Make zero to pass through
+            ball.physicsBody?.collisionBitMask = BoxCategory//Make zero to pass through
             ball.physicsBody?.contactTestBitMask = 0//BoxCategory //| BallCategory
         }
         
